@@ -1,0 +1,12 @@
+[
+  { "sheetName": "Calum", "displayName": "Calum", "fullName": "Calum Reid", "memberFrom": 1, "memberUntil": null },
+  { "sheetName": "Charles", "displayName": "Charlie", "fullName": "Charles Sheldon", "memberFrom": 1, "memberUntil": null },
+  { "sheetName": "Craig", "displayName": "Craig", "fullName": "Craig Johnston", "memberFrom": 1, "memberUntil": null },
+  { "sheetName": "Daniel", "displayName": "Dan", "fullName": "Daniel Holmes", "memberFrom": 1, "memberUntil": null },
+  { "sheetName": "James", "displayName": "James", "fullName": "James McCutcheon", "memberFrom": 1, "memberUntil": null },
+  { "sheetName": "Max", "displayName": "Max", "fullName": "Max Miles-Thomas", "memberFrom": 1, "memberUntil": 4 },
+  { "sheetName": "Michael", "displayName": "Mike", "fullName": "Michael Nelson", "memberFrom": 1, "memberUntil": null },
+  { "sheetName": "Thomas", "displayName": "Tom", "fullName": "Thomas Evans", "memberFrom": 1, "memberUntil": null },
+  { "sheetName": "Jonathan", "displayName": "Jonny", "fullName": "Jonathan Hine", "memberFrom": 5, "memberUntil": null },
+  { "sheetName": "Jeremy", "displayName": "Dyson", "fullName": "Jeremy Dyson", "memberFrom": 5, "memberUntil": null }
+]
