@@ -56,6 +56,16 @@ export function Methods() {
         </dl>
       </Card>
 
+      <Card title="Cuisines">
+        <dl>
+          <Term name="Cuisine and region">Each evening is given one cuisine by hand, and each cuisine sits in a broader part of the world so there are enough evenings to compare. Evenings not yet classified are left out.</Term>
+          <Term name="Average score for a cuisine">The mean of every individual score given at that cuisine's evenings.</Term>
+          <Term name="New to the Council">A cuisine counts as new in the circuit where it first appears.</Term>
+          <Term name="Who picks what">Counts each wizard's own choices by region. A repeat is the same cuisine chosen more than once.</Term>
+          <Term name="Who rates what">For each evening, take a wizard's score minus the average of everyone else's. Average that gap over a region's evenings, then take off the wizard's usual gap across all evenings, so harshness drops out and only taste is left. A region needs 3 or more such evenings. A wizard's own choices are included.</Term>
+        </dl>
+      </Card>
+
       <Card title="Records and trends">
         <dl>
           <Term name="Who nominates whom">Each chooser nominates the next, so a nomination is counted from each evening's chooser to the following evening's chooser within the same circuit.</Term>

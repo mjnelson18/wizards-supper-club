@@ -11,6 +11,7 @@ const ROUTES: [string, RegExp][] = [
   ['/circuits/compare?a=7&b=8', /Compare circuits/],
   ['/restaurants', /Hall of fame/],
   ['/evenings/C8-01', /.+/],
+  ['/cuisines', /Cuisines/],
   ['/wizards', /Wizards/],
   ['/wizards/Thomas', /Tom/],
   ['/wizards/head-to-head?a=Calum&b=Michael', /Head-to-head/],

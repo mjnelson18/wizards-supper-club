@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { makeSample } from '../../scripts/sample-data.ts';
-import { DataError, guardCell, parseCsv, parseEvenings, parseOverrides, parseScores, parseStatus, parseWizards } from './ingest.ts';
+import { DataError, guardCell, parseCsv, parseCuisines, parseEvenings, parseOverrides, parseScores, parseStatus, parseWizards } from './ingest.ts';
 import { buildStats } from './stats.ts';
 
 const wizards = parseWizards(JSON.parse(readFileSync('config/wizards.json', 'utf8')));
@@ -137,5 +137,40 @@ describe('sample data', () => {
     expect(c7.eveningIds[c7.eveningIds.length - 1]).toBe('C7-10');
     expect(stats.evenings.find((e) => e.id === 'C8-01')!.average).toBe(5);
     expect(stats.circuits[7].due).toHaveLength(8);
+  });
+});
+
+describe('cuisine config', () => {
+  const evenings = parseEvenings(`${EVENINGS_HEADER}\nC8-01,8,1,2026-09-03,Charles,Golden Phoenix\nC8-02,8,2,,Daniel,New Place\n`, wizards);
+  const regions = { Chinese: 'East Asia' };
+
+  it('tags evenings and warns, without failing, about ones with no cuisine', () => {
+    const { tags, warnings } = parseCuisines({ regions, evenings: { 'C8-01': { restaurant: 'Golden Phoenix', cuisine: 'Chinese' } } }, evenings);
+    expect(tags).toEqual({ 'C8-01': { cuisine: 'Chinese', region: 'East Asia' } });
+    expect(warnings).toEqual(['No cuisine recorded for: C8-02 New Place. Add them to config/cuisines.json.']);
+  });
+
+  it('warns about an unknown evening or a label that no longer matches the Sheet', () => {
+    const { warnings } = parseCuisines(
+      { regions, evenings: { 'C8-01': { restaurant: 'Silver Phoenix', cuisine: 'Chinese' }, 'C8-02': { cuisine: 'Chinese' }, 'C9-01': { cuisine: 'Chinese' } } },
+      evenings,
+    );
+    expect(warnings).toHaveLength(2);
+    expect(warnings[0]).toMatch(/labelled "Silver Phoenix" but the Sheet says "Golden Phoenix"/);
+    expect(warnings[1]).toMatch(/C9-01 is not in the Sheet/);
+  });
+
+  it('fails on a cuisine with no region or a malformed file', () => {
+    expect(issuesOf(() => parseCuisines({ regions, evenings: { 'C8-01': { cuisine: 'Martian' } } }, evenings))[0]).toMatch(/not listed under "regions"/);
+    expect(issuesOf(() => parseCuisines({ regions }, evenings))).toHaveLength(1);
+    expect(issuesOf(() => parseCuisines({ regions, evenings: { eight: { cuisine: 'Chinese' } } }, evenings))).toHaveLength(1);
+  });
+
+  it('accepts the real config file', () => {
+    const json = JSON.parse(readFileSync('config/cuisines.json', 'utf8'));
+    expect(() => parseCuisines(json, [])).not.toThrow();
+    const used = new Set(Object.values(json.evenings as Record<string, { cuisine: string }>).map((e) => e.cuisine));
+    // Every listed cuisine is used, so the list cannot fill up with leftovers.
+    expect(Object.keys(json.regions).filter((c) => !used.has(c))).toEqual([]);
   });
 });

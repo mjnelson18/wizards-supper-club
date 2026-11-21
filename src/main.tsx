@@ -7,6 +7,7 @@ import { Layout } from './components/Layout.tsx';
 import { NotFound } from './components/ui.tsx';
 import { DataProvider } from './data.tsx';
 import { CircuitCompare, CircuitDetail, CircuitsIndex } from './pages/Circuits.tsx';
+import { Cuisines } from './pages/Cuisines.tsx';
 import { Home } from './pages/Home.tsx';
 import { Methods } from './pages/Methods.tsx';
 import { Records } from './pages/Records.tsx';
@@ -26,6 +27,7 @@ createRoot(document.getElementById('root') as HTMLElement).render(
             <Route path="circuits/:n" element={<CircuitDetail />} />
             <Route path="restaurants" element={<Restaurants />} />
             <Route path="evenings/:id" element={<EveningDetail />} />
+            <Route path="cuisines" element={<Cuisines />} />
             <Route path="wizards" element={<WizardsIndex />} />
             <Route path="wizards/head-to-head" element={<HeadToHead />} />
             <Route path="wizards/:name" element={<WizardProfile />} />

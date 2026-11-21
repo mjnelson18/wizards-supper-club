@@ -1,3 +1,4 @@
+import { Link } from 'react-router';
 import { BoxPlot, Columns, Legend, SequenceChart, TableView } from '../components/charts.tsx';
 import { Card, EveningLink, PageTitle, Stat, StatGrid, WizardLink } from '../components/ui.tsx';
 import { useData } from '../data.tsx';
@@ -21,6 +22,11 @@ export function Trends() {
   return (
     <>
       <PageTitle title="Trends" sub="The whole history in order, circuit by circuit. Tap or hover a chart for the detail." />
+      <p className="mb-4 text-sm">
+        <Link to="/cuisines" className="link">
+          Cuisines: how the mix has changed, and who favours what
+        </Link>
+      </p>
 
       <Card title="Evening averages">
         <Legend

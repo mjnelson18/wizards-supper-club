@@ -307,3 +307,84 @@ describe('a small history', () => {
     expect(s.circuits[1].due).toEqual(['A', 'C']);
   });
 });
+
+describe('cuisines', () => {
+  const SEA = { cuisine: 'Thai', region: 'South-East Asia' };
+  const stats = buildStats({
+    wizards: [wizard('A'), wizard('B'), wizard('C')],
+    evenings: [
+      evening('C1-01', 'A'),
+      evening('C1-02', 'B'),
+      evening('C1-03', 'C'),
+      evening('C2-01', 'A'),
+      evening('C2-02', 'B'),
+      evening('C2-03', 'C'),
+    ],
+    scores: [
+      ...rows('C1-01', 'A:8 B:6 C:7'),
+      ...rows('C1-02', 'A:9 B:7 C:8'),
+      ...rows('C1-03', 'A:5 B:7 C:6'),
+      ...rows('C2-01', 'A:6 B:6 C:6'),
+      ...rows('C2-02', 'A:9 B:6 C:6'),
+      ...rows('C2-03', 'A:7 B:7'),
+    ],
+    cuisines: {
+      'C1-01': SEA,
+      'C1-02': SEA,
+      'C1-03': { cuisine: 'Chinese', region: 'East Asia' },
+      'C2-01': { cuisine: 'Greek', region: 'Continental Europe' },
+      'C2-02': SEA,
+    },
+  });
+  const c = stats.cuisines;
+
+  it('tags each evening and lists the unclassified ones', () => {
+    expect(stats.evenings.map((e) => e.cuisine)).toEqual(['Thai', 'Thai', 'Chinese', 'Greek', 'Thai', null]);
+    expect(stats.evenings[5].region).toBeNull();
+    expect(c.unclassified).toEqual(['C2-03']);
+  });
+
+  it('ranks cuisines and regions by how often they were visited', () => {
+    expect(c.cuisines.map((g) => [g.name, g.eveningIds.length])).toEqual([['Thai', 3], ['Chinese', 1], ['Greek', 1]]);
+    const thai = c.cuisines[0];
+    expect(thai.region).toBe('South-East Asia');
+    expect(thai.eveningIds).toEqual(['C1-01', 'C1-02', 'C2-02']);
+    expect(thai.nScores).toBe(9);
+    expect(thai.mean).toBeCloseTo(66 / 9, 10);
+    expect(thai.best).toBe('C1-02');
+    expect(thai.firstCircuit).toBe(1);
+    expect(c.regions.map((g) => g.name)).toEqual(['South-East Asia', 'Continental Europe', 'East Asia']);
+  });
+
+  it('counts regions per circuit and spots first-time cuisines', () => {
+    expect(c.byCircuit).toEqual([
+      { circuit: 1, regions: { 'South-East Asia': 2, 'East Asia': 1 }, firstTime: ['Thai', 'Chinese'] },
+      { circuit: 2, regions: { 'Continental Europe': 1, 'South-East Asia': 1 }, firstTime: ['Greek'] },
+    ]);
+  });
+
+  it('shows what each wizard picks, and repeats', () => {
+    expect(c.choosers).toEqual([
+      { wizard: 'A', picks: 2, distinct: 2, regions: [{ name: 'Continental Europe', count: 1 }, { name: 'South-East Asia', count: 1 }], repeats: [] },
+      { wizard: 'B', picks: 2, distinct: 1, regions: [{ name: 'South-East Asia', count: 2 }], repeats: [{ name: 'Thai', count: 2 }] },
+      { wizard: 'C', picks: 1, distinct: 1, regions: [{ name: 'East Asia', count: 1 }], repeats: [] },
+    ]);
+  });
+
+  it("measures taste against the table, less the wizard's usual gap", () => {
+    // A is 1.5, 1.5 and 3 above the others at the Thai evenings (mean 2), and
+    // 0.75 above them on average everywhere, so A's taste for the region is +1.25.
+    const taste = Object.fromEntries(c.taste.map((t) => [t.wizard, t.rows]));
+    expect(taste.A).toHaveLength(1); // other regions have under 3 evenings
+    expect(taste.A[0].region).toBe('South-East Asia');
+    expect(taste.A[0].n).toBe(3);
+    expect(taste.A[0].diff).toBeCloseTo(1.25, 10);
+    expect(taste.B[0].diff).toBeCloseTo(-1, 10);
+    expect(taste.C[0].diff).toBeCloseTo(-0.2, 10);
+  });
+
+  it('copes with no cuisine data at all', () => {
+    const none = buildStats({ wizards: [wizard('A')], evenings: [evening('C1-01', 'A')], scores: rows('C1-01', 'A:8') });
+    expect(none.cuisines).toEqual({ unclassified: ['C1-01'], cuisines: [], regions: [], byCircuit: [{ circuit: 1, regions: {}, firstTime: [] }], choosers: [], taste: [] });
+  });
+});

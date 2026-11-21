@@ -13,7 +13,7 @@ const icon = (d: ReactNode) => (
 const NAV: { to: string; label: string; match: string[]; icon: ReactNode }[] = [
   { to: '/', label: 'Home', match: [], icon: icon(<path d="M4 20V10l8-6 8 6v10h-5v-6h-6v6z" />) },
   { to: '/circuits', label: 'Circuits', match: ['/circuits'], icon: icon(<><circle cx="12" cy="12" r="8" /><path d="M12 4v3M20 12h-3M12 20v-3M4 12h3" /></>) },
-  { to: '/restaurants', label: 'Restaurants', match: ['/restaurants', '/evenings'], icon: icon(<path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 2-3 4-3 7h3zM17 10v11" />) },
+  { to: '/restaurants', label: 'Restaurants', match: ['/restaurants', '/evenings', '/cuisines'], icon: icon(<path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 2-3 4-3 7h3zM17 10v11" />) },
   { to: '/wizards', label: 'Wizards', match: ['/wizards'], icon: icon(<><path d="M12 3l5 13H7z" /><path d="M3 18c3 2.5 15 2.5 18 0" /></>) },
   { to: '/trends', label: 'Trends', match: ['/trends'], icon: icon(<path d="M4 18l5-6 4 3 7-9M4 21h16" />) },
   { to: '/records', label: 'Records', match: ['/records'], icon: icon(<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.3 6-5.4-3.1-5.4 3.1 1.3-6L3.4 9.3l6-.7z" />) },

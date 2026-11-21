@@ -88,6 +88,22 @@ To record a result the group has declared, edit [config/overrides.json](config/o
 - `announced`: optional date. The home page shows a finished circuit's winner for 60 days after it.
 - `final`: marks a circuit as finished and keeps the calculated winner. Use it for old circuits that would otherwise stay provisional because of unknown attendance.
 
+## Cuisines
+
+The Cuisines page (linked from Restaurants and Trends) shows the most and least visited cuisines, how the mix has changed circuit by circuit, what each wizard tends to pick, and what each tends to rate above or below the rest of the table.
+
+Cuisines are not in the Sheet. They live in [config/cuisines.json](config/cuisines.json), classified once by hand; nothing calls an AI model when the site builds.
+
+After a new evening, add one line under `evenings`:
+
+```json
+"C8-02": { "restaurant": "The Palomar", "cuisine": "Israeli" }
+```
+
+- `cuisine` must be one of the names under `regions`. To use a new cuisine, add it there first with the part of the world it belongs to, e.g. `"Korean": "East Asia"`.
+- `restaurant` is only a label so the file is readable. The build warns if it no longer matches the Sheet.
+- An evening with no entry is not an error. The build logs a warning, the evening shows under "Not yet classified", and it is left out of the cuisine figures until you add it.
+
 ## Scoring future evenings
 
 [apps-script/ScoreForm.gs](apps-script/ScoreForm.gs) creates one permanent Google Form that is reused for every evening. It writes into the same Evenings and Log tabs as the catch-up form, so the site picks the results up with no further setup.
@@ -155,6 +171,7 @@ To use the real Sheet locally, set the three variables in your shell and run `np
 ```
 config/wizards.json         roster, display names, membership periods
 config/overrides.json       official winners
+config/cuisines.json        each evening's cuisine, and the region each cuisine sits in
 scripts/fetch-data.ts       fetch, whitelist, validate, compute
 scripts/sample-data.ts      made-up data for local work
 scripts/check-dist.mjs      privacy scan of the built site

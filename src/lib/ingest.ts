@@ -4,7 +4,7 @@
 import { z } from 'zod';
 import { resolveWizard } from './roster.ts';
 import { STATUSES } from './types.ts';
-import type { Evening, Overrides, PublicStatus, ScoreEntry, Status, WizardConfig } from './types.ts';
+import type { CuisineTag, Evening, Overrides, PublicStatus, ScoreEntry, Status, WizardConfig } from './types.ts';
 
 /** Raised with every problem found, so one run reports them all. */
 export class DataError extends Error {
@@ -295,4 +295,57 @@ export function parseOverrides(json: unknown, wizards: WizardConfig[]): Override
   }
   if (issues.length) throw new DataError(issues);
   return parsed.data;
+}
+
+const cuisineSchema = z.object({
+  /** Cuisine name -> the broader region it is grouped under. */
+  regions: z.record(z.string().min(1), z.string().min(1)),
+  /** Evening ID -> its cuisine. `restaurant` is a label for whoever edits the file. */
+  evenings: z.record(
+    z.string().regex(/^C\d+-\d{2}$/, 'keys must look like C7-08'),
+    z.object({ restaurant: z.string().optional(), cuisine: z.string().min(1) }),
+  ),
+});
+
+/**
+ * config/cuisines.json. A cuisine with no region is an error; an evening
+ * with no cuisine is only a warning, so a new evening never blocks a deploy.
+ */
+export function parseCuisines(
+  json: unknown,
+  evenings: Evening[],
+  options: { checkLabels?: boolean } = {},
+): { tags: Record<string, CuisineTag>; warnings: string[] } {
+  const parsed = cuisineSchema.safeParse(json);
+  if (!parsed.success) throw new DataError([`config/cuisines.json: ${describe(parsed.error)}`]);
+  const { regions, evenings: entries } = parsed.data;
+  const issues: string[] = [];
+  const warnings: string[] = [];
+  const byId = new Map(evenings.map((e) => [e.id, e]));
+  const tags: Record<string, CuisineTag> = {};
+
+  for (const [cuisine, region] of Object.entries(regions)) {
+    issues.push(...guardCell(cuisine, 'config/cuisines.json cuisine', 40), ...guardCell(region, 'config/cuisines.json region', 40));
+  }
+  for (const [id, entry] of Object.entries(entries)) {
+    const region = regions[entry.cuisine];
+    if (!region) {
+      issues.push(`config/cuisines.json: ${id} has cuisine "${entry.cuisine}", which is not listed under "regions"`);
+      continue;
+    }
+    const evening = byId.get(id);
+    if (!evening) {
+      warnings.push(`config/cuisines.json: ${id} is not in the Sheet; its cuisine is ignored`);
+      continue;
+    }
+    if (options.checkLabels !== false && entry.restaurant && entry.restaurant.trim().toLowerCase() !== evening.restaurant.trim().toLowerCase()) {
+      warnings.push(`config/cuisines.json: ${id} is labelled "${entry.restaurant}" but the Sheet says "${evening.restaurant}"`);
+    }
+    tags[id] = { cuisine: entry.cuisine, region };
+  }
+  if (issues.length) throw new DataError(issues);
+
+  const missing = evenings.filter((e) => !tags[e.id]).map((e) => `${e.id} ${e.restaurant}`);
+  if (missing.length) warnings.push(`No cuisine recorded for: ${missing.join('; ')}. Add them to config/cuisines.json.`);
+  return { tags, warnings };
 }

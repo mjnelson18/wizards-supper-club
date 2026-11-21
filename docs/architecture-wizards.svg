@@ -46,8 +46,8 @@ svg { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
 <rect class="lbl-bg" x="284" y="362" width="55" height="15" rx="3"/>
 <text class="lbl lbl-data" x="288" y="373" text-anchor="start">two CSVs</text>
 <polyline class="edge edge-data" points="450,400 450,340" marker-end="url(#arrow)"/>
-<rect class="lbl-bg" x="454" y="362" width="103" height="15" rx="3"/>
-<text class="lbl lbl-data" x="458" y="373" text-anchor="start">roster · winners</text>
+<rect class="lbl-bg" x="454" y="362" width="169" height="15" rx="3"/>
+<text class="lbl lbl-data" x="458" y="373" text-anchor="start">roster · winners · cuisines</text>
 <polyline class="edge edge-data" points="560,205 640,205" marker-end="url(#arrow)"/>
 <rect class="lbl-bg" x="569.5" y="187" width="61" height="15" rx="3"/>
 <text class="lbl lbl-data" x="600" y="198" text-anchor="middle">publishes</text>
@@ -116,11 +116,12 @@ svg { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
 <text class="sub" x="350" y="326" xml:space="preserve">    run and the old site stays up.</text>
 </g>
 <g class="node role-store">
-<rect x="340" y="400" width="220" height="76" rx="7"/>
+<rect x="340" y="400" width="220" height="89" rx="7"/>
 <text class="eyebrow" x="350" y="416">CONFIG</text>
 <text class="name" x="350" y="433">This repo</text>
 <text class="sub" x="350" y="449" xml:space="preserve">wizards.json: roster, membership.</text>
 <text class="sub" x="350" y="462" xml:space="preserve">overrides.json: official winners.</text>
+<text class="sub" x="350" y="475" xml:space="preserve">cuisines.json: evening cuisines.</text>
 </g>
 <g class="node role-ext">
 <rect x="640" y="160" width="170" height="89" rx="7"/>

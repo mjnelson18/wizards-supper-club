@@ -62,6 +62,15 @@ export interface StatsInput {
   wizards: WizardConfig[];
   overrides?: Overrides;
   status?: PublicStatus;
+  /** Cuisine and region per Evening ID, from config/cuisines.json. */
+  cuisines?: Record<string, CuisineTag>;
+}
+
+export interface CuisineTag {
+  /** e.g. "Thai" */
+  cuisine: string;
+  /** Broader group, e.g. "South-East Asia" */
+  region: string;
 }
 
 // ---------- Derived ----------
@@ -81,6 +90,9 @@ export interface SelfScore {
 export interface EveningStats extends Evening {
   /** Position in the whole history (0-based), ordered by circuit then number. */
   seq: number;
+  /** null until the evening is classified in config/cuisines.json. */
+  cuisine: string | null;
+  region: string | null;
   entries: EveningEntry[];
   nScores: number;
   average: number | null;
@@ -233,6 +245,53 @@ export interface Stats {
     secondHalfMean: number | null;
   };
   status: PublicStatus;
+  cuisines: CuisineStats;
+}
+
+/** A cuisine, or a region of cuisines, and the evenings spent on it. */
+export interface CuisineGroup {
+  name: string;
+  /** The region a cuisine belongs to; null when the group is itself a region. */
+  region: string | null;
+  eveningIds: string[];
+  nScores: number;
+  /** Mean of every score given at these evenings. */
+  mean: number | null;
+  /** Best evening by average, among those with 3 or more scores. */
+  best: string | null;
+  firstCircuit: number;
+}
+
+export interface CuisineStats {
+  /** Evenings with no cuisine recorded yet. */
+  unclassified: string[];
+  /** Most visited first. */
+  cuisines: CuisineGroup[];
+  regions: CuisineGroup[];
+  byCircuit: {
+    circuit: number;
+    /** Evenings per region in this circuit. */
+    regions: Record<string, number>;
+    /** Cuisines the Council tried for the first time in this circuit. */
+    firstTime: string[];
+  }[];
+  /** What each wizard picks when choosing. */
+  choosers: {
+    wizard: string;
+    picks: number;
+    distinct: number;
+    regions: { name: string; count: number }[];
+    /** Cuisines picked more than once. */
+    repeats: { name: string; count: number }[];
+  }[];
+  /**
+   * How each wizard scores a region against the rest of the table, relative
+   * to their own usual gap. Regions need 3 or more shared evenings.
+   */
+  taste: {
+    wizard: string;
+    rows: { region: string; n: number; diff: number }[];
+  }[];
 }
 
 export interface Meta {

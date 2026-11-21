@@ -28,6 +28,12 @@ export function Restaurants() {
     <>
       <PageTitle title="Hall of fame" sub={`Every restaurant the Council has visited: ${stats.evenings.length} evenings, ${qualified.length} with enough scores to rank in this view.`} />
 
+      <p className="mb-4 text-sm">
+        <Link to="/cuisines" className="link">
+          By cuisine: what the Council eats and who favours what
+        </Link>
+      </p>
+
       <div className="mb-4 space-y-3">
         <div>
           <label htmlFor={searchId} className="mb-1 block text-xs text-ink-2">
@@ -99,6 +105,11 @@ export function EveningDetail() {
         sub={
           <>
             Chosen by <WizardLink name={e.chooser} /> · <CircuitLink n={e.circuit} />, evening {e.number} · {fmtDate(e.date)}
+            {e.cuisine && (
+              <>
+                {' '}· <Link to="/cuisines" className="link">{e.cuisine}</Link>
+              </>
+            )}
           </>
         }
       />

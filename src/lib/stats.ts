@@ -5,6 +5,8 @@ import { isMember, resolveWizard } from './roster.ts';
 import type {
   CircuitStats,
   CircuitWinner,
+  CuisineGroup,
+  CuisineStats,
   Evening,
   EveningEntry,
   EveningStats,
@@ -16,6 +18,7 @@ import type {
   StatsInput,
   Status,
   WizardCircuit,
+  WizardConfig,
   WizardStats,
 } from './types.ts';
 
@@ -171,6 +174,8 @@ export function buildStats(input: StatsInput): Stats {
     return {
       ...e,
       seq,
+      cuisine: input.cuisines?.[e.id]?.cuisine ?? null,
+      region: input.cuisines?.[e.id]?.region ?? null,
       entries,
       nScores: xs.length,
       average: mean(xs),
@@ -462,6 +467,116 @@ export function buildStats(input: StatsInput): Stats {
     records,
     hostingOrder: { slots, firstHalfMean: mean(firstHalf), secondHalfMean: mean(secondHalf) },
     status: input.status ?? { batonHolder: null, nextDate: null, nextRestaurant: null },
+    cuisines: cuisineStats(evs, wizards),
+  };
+}
+
+// ---------- Cuisines ----------
+
+/** A wizard needs this many evenings in a region before a taste is reported. */
+export const MIN_EVENINGS_FOR_TASTE = 3;
+
+function cuisineGroups(
+  evs: EveningStats[],
+  key: (e: EveningStats) => string | null,
+  region: (e: EveningStats) => string | null,
+): CuisineGroup[] {
+  const map = new Map<string, EveningStats[]>();
+  for (const e of evs) {
+    const k = key(e);
+    if (k === null) continue;
+    const list = map.get(k);
+    if (list) list.push(e);
+    else map.set(k, [e]);
+  }
+  return [...map.entries()]
+    .map(([name, list]) => {
+      const xs = list.flatMap((e) => e.entries.filter((x) => x.score !== null).map((x) => x.score as number));
+      const best = list.filter((e) => e.qualified).sort(byAverageDesc)[0];
+      return {
+        name,
+        region: region(list[0]),
+        eveningIds: list.map((e) => e.id),
+        nScores: xs.length,
+        mean: mean(xs),
+        best: best?.id ?? null,
+        firstCircuit: list[0].circuit,
+      };
+    })
+    .sort((a, b) => b.eveningIds.length - a.eveningIds.length || (b.mean ?? -1) - (a.mean ?? -1) || a.name.localeCompare(b.name));
+}
+
+const tally = (names: string[]) => {
+  const counts = new Map<string, number>();
+  for (const n of names) counts.set(n, (counts.get(n) ?? 0) + 1);
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+};
+
+/** Popularity, change over time, and who favours what. Evenings in order. */
+export function cuisineStats(evs: EveningStats[], wizards: WizardConfig[]): CuisineStats {
+  const classified = evs.filter((e) => e.cuisine !== null && e.region !== null);
+
+  const seen = new Set<string>();
+  const byCircuit = [...new Set(evs.map((e) => e.circuit))].map((circuit) => {
+    const list = classified.filter((e) => e.circuit === circuit);
+    const regions: Record<string, number> = {};
+    const firstTime: string[] = [];
+    for (const e of list) {
+      regions[e.region as string] = (regions[e.region as string] ?? 0) + 1;
+      if (!seen.has(e.cuisine as string)) {
+        seen.add(e.cuisine as string);
+        firstTime.push(e.cuisine as string);
+      }
+    }
+    return { circuit, regions, firstTime };
+  });
+
+  const choosers = wizards
+    .map((w) => {
+      const picks = classified.filter((e) => e.chooser === w.sheetName);
+      const cuisines = tally(picks.map((e) => e.cuisine as string));
+      return {
+        wizard: w.sheetName,
+        picks: picks.length,
+        distinct: cuisines.length,
+        regions: tally(picks.map((e) => e.region as string)),
+        repeats: cuisines.filter((c) => c.count > 1),
+      };
+    })
+    .filter((c) => c.picks > 0);
+
+  // Taste: how far above or below the rest of the table a wizard scores a
+  // region, less their usual gap to the table (which is just harshness).
+  const taste = wizards
+    .map((w) => {
+      const gaps: { region: string | null; gap: number }[] = [];
+      for (const e of evs) {
+        const own = e.entries.find((x) => x.wizard === w.sheetName);
+        const others = mean(e.entries.filter((x) => x.wizard !== w.sheetName && x.score !== null).map((x) => x.score as number));
+        if (!own || own.score === null || others === null) continue;
+        gaps.push({ region: e.region, gap: own.score - others });
+      }
+      const usual = mean(gaps.map((g) => g.gap));
+      const rows = [...new Set(gaps.map((g) => g.region).filter((r): r is string => r !== null))]
+        .map((region) => {
+          const xs = gaps.filter((g) => g.region === region).map((g) => g.gap);
+          return { region, n: xs.length, diff: (mean(xs) as number) - (usual as number) };
+        })
+        .filter((r) => r.n >= MIN_EVENINGS_FOR_TASTE)
+        .sort((a, b) => b.diff - a.diff || a.region.localeCompare(b.region));
+      return { wizard: w.sheetName, rows };
+    })
+    .filter((t) => t.rows.length > 0);
+
+  return {
+    unclassified: evs.filter((e) => e.cuisine === null).map((e) => e.id),
+    cuisines: cuisineGroups(classified, (e) => e.cuisine, (e) => e.region),
+    regions: cuisineGroups(classified, (e) => e.region, () => null),
+    byCircuit,
+    choosers,
+    taste,
   };
 }
 

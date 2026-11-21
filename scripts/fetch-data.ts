@@ -8,7 +8,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DataError, parseEvenings, parseOverrides, parseScores, parseStatus, parseWizards } from '../src/lib/ingest.ts';
+import { DataError, parseCuisines, parseEvenings, parseOverrides, parseScores, parseStatus, parseWizards } from '../src/lib/ingest.ts';
 import { buildStats, compareEvenings } from '../src/lib/stats.ts';
 import type { Meta } from '../src/lib/types.ts';
 import { makeSample } from './sample-data.ts';
@@ -64,7 +64,10 @@ async function main() {
   const status = parseStatus(csv.status, wizards);
   for (const w of warnings) console.warn(`warning: ${w}`);
 
-  const stats = buildStats({ evenings, scores, wizards, overrides, status });
+  const cuisines = parseCuisines(await readJson('config/cuisines.json'), evenings, { checkLabels: !sample });
+  for (const w of cuisines.warnings) console.warn(`warning: ${w}`);
+
+  const stats = buildStats({ evenings, scores, wizards, overrides, status, cuisines: cuisines.tags });
   const meta: Meta = {
     refreshedAt: new Date().toISOString(),
     source: sample ? 'sample' : 'sheet',
