@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1050 650" width="1050" height="650" role="img" aria-label="Architecture: wizards fill in one Google Form; an Apps Script writes each answer into the Google Sheet, which is the source of truth. Two filtered tabs are published as CSV. A GitHub Actions run, woken by GitHub&#x27;s timer every 6 hours or by the form script a few minutes after a submission, fetches the CSVs, checks them, works out the statistics using the roster and official winners kept in this repo, and publishes a static site to GitHub Pages, which the wizards read on their phones.">
+<title>Architecture: wizards fill in one Google Form; an Apps Script writes each answer into the Google Sheet, which is the source of truth. Two filtered tabs are published as CSV. A GitHub Actions run, woken by GitHub&#x27;s timer every 6 hours or by the form script a few minutes after a submission, fetches the CSVs, checks them, works out the statistics using the roster and official winners kept in this repo, and publishes a static site to GitHub Pages, which the wizards read on their phones.</title>
+<style>
+svg { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+.node rect { stroke: #e6e9ee; stroke-opacity: .28; stroke-width: 1; }
+.role-clock rect { fill: #342c52 } .role-worker rect { fill: #273746 } .role-ext rect { fill: #2a303a }
+.role-store rect { fill: #263a2d } .role-ai rect { fill: #4a3a1c } .role-people rect { fill: #4a2d27 }
+.node .eyebrow { font-size: 9.5px; letter-spacing: .09em; fill: #a2abb8; font-weight: 600; }
+.node .name { font-size: 13px; font-weight: 600; fill: #e6e9ee; }
+.node .sub { font-size: 10.5px; fill: #e6e9ee; fill-opacity: .82; white-space: pre; }
+.edge { fill: none; stroke-width: 1.5; stroke: #e6e9ee; stroke-linejoin: round; }
+.edge-trigger { stroke: #b3a1f0; stroke-dasharray: 6 4; }
+.edge-human { stroke: #ef8f78; stroke-dasharray: 2 4; stroke-linecap: round; }
+.fill-t { fill: #b3a1f0 } .fill-h { fill: #ef8f78 } .fill-d { fill: #e6e9ee }
+.lbl { font-size: 11px; fill: #e6e9ee; }
+.lbl-trigger { fill: #b3a1f0; font-weight: 500; }
+.lbl-human { fill: #ef8f78; font-weight: 500; }
+.lbl-bg { fill: #0d1117; }
+</style>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fill-d"/></marker>
+<marker id="arrow-t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fill-t"/></marker>
+<marker id="arrow-h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fill-h"/></marker>
+</defs>
+<rect width="1050" height="650" fill="#0d1117"/>
+<g transform="translate(0,26)">
+<polyline class="edge edge-human" points="950,40 950,14 120,14 120,40" marker-end="url(#arrow-h)"/>
+<rect class="lbl-bg" x="435.5" y="-4" width="199" height="15" rx="3"/>
+<text class="lbl lbl-human" x="535" y="7" text-anchor="middle">record an evening · give a score</text>
+<polyline class="edge edge-data" points="120,129 120,173" marker-end="url(#arrow)"/>
+<rect class="lbl-bg" x="124" y="143" width="49" height="15" rx="3"/>
+<text class="lbl lbl-data" x="128" y="154" text-anchor="start">answers</text>
+<polyline class="edge edge-data" points="120,288 120,332" marker-end="url(#arrow)"/>
+<rect class="lbl-bg" x="124" y="302" width="121" height="15" rx="3"/>
+<text class="lbl lbl-data" x="128" y="313" text-anchor="start">adds · updates rows</text>
+<polyline class="edge edge-data" points="120,434 120,484" marker-end="url(#arrow)"/>
+<rect class="lbl-bg" x="124" y="451" width="121" height="15" rx="3"/>
+<text class="lbl lbl-data" x="128" y="462" text-anchor="start">filtered by formula</text>
+<polyline class="edge edge-trigger" points="450,116 450,160" marker-end="url(#arrow-t)"/>
+<rect class="lbl-bg" x="454" y="130" width="55" height="15" rx="3"/>
+<text class="lbl lbl-trigger" x="458" y="141" text-anchor="start">wakes up</text>
+<polyline class="edge edge-trigger" points="220,230 340,230" marker-end="url(#arrow-t)"/>
+<rect class="lbl-bg" x="234.5" y="212" width="91" height="15" rx="3"/>
+<text class="lbl lbl-trigger" x="280" y="223" text-anchor="middle">wakes up later</text>
+<polyline class="edge edge-data" points="220,535 280,535 280,310 340,310" marker-end="url(#arrow)"/>
+<rect class="lbl-bg" x="284" y="362" width="55" height="15" rx="3"/>
+<text class="lbl lbl-data" x="288" y="373" text-anchor="start">two CSVs</text>
+<polyline class="edge edge-data" points="450,400 450,340" marker-end="url(#arrow)"/>
+<rect class="lbl-bg" x="454" y="362" width="103" height="15" rx="3"/>
+<text class="lbl lbl-data" x="458" y="373" text-anchor="start">roster · winners</text>
+<polyline class="edge edge-data" points="560,205 640,205" marker-end="url(#arrow)"/>
+<rect class="lbl-bg" x="569.5" y="187" width="61" height="15" rx="3"/>
+<text class="lbl lbl-data" x="600" y="198" text-anchor="middle">publishes</text>
+<polyline class="edge edge-data" points="810,205 950,205 950,142" marker-end="url(#arrow)"/>
+<rect class="lbl-bg" x="861" y="168" width="85" height="15" rx="3"/>
+<text class="lbl lbl-data" x="942" y="179" text-anchor="end">read the site</text>
+<polyline class="edge edge-human" points="640,438 560,438" marker-end="url(#arrow-h)"/>
+<rect class="lbl-bg" x="581.5" y="420" width="37" height="15" rx="3"/>
+<text class="lbl lbl-human" x="600" y="431" text-anchor="middle">edits</text>
+<g class="node role-ext">
+<rect x="20" y="40" width="200" height="89" rx="7"/>
+<text class="eyebrow" x="30" y="56">INPUT</text>
+<text class="name" x="30" y="73">Score form (Google Form)</text>
+<text class="sub" x="30" y="89" xml:space="preserve">One permanent link. The chooser</text>
+<text class="sub" x="30" y="102" xml:space="preserve">records a new evening; everyone</text>
+<text class="sub" x="30" y="115" xml:space="preserve">who went then scores it.</text>
+</g>
+<g class="node role-worker">
+<rect x="20" y="173" width="200" height="115" rx="7"/>
+<text class="eyebrow" x="30" y="189">FORM SCRIPT</text>
+<text class="name" x="30" y="206">Google Apps Script</text>
+<text class="sub" x="30" y="222" xml:space="preserve">Runs on every submission. Adds</text>
+<text class="sub" x="30" y="235" xml:space="preserve">the evening, or updates that</text>
+<text class="sub" x="30" y="248" xml:space="preserve">wizard&#x27;s own row. Never deletes.</text>
+<text class="sub" x="30" y="261" xml:space="preserve">Then asks GitHub for a rebuild</text>
+<text class="sub" x="30" y="274" xml:space="preserve">(optional; needs a token).</text>
+</g>
+<g class="node role-store">
+<rect x="20" y="332" width="200" height="102" rx="7"/>
+<text class="eyebrow" x="30" y="348">MEMORY</text>
+<text class="name" x="30" y="365">Wizards – Supper Club Log</text>
+<text class="sub" x="30" y="381" xml:space="preserve">Google Sheet, the source of</text>
+<text class="sub" x="30" y="394" xml:space="preserve">truth: Evenings and Log tabs.</text>
+<text class="sub" x="30" y="407" xml:space="preserve">Reviews and personal form links</text>
+<text class="sub" x="30" y="420" xml:space="preserve">stay private here.</text>
+</g>
+<g class="node role-ext">
+<rect x="20" y="484" width="200" height="102" rx="7"/>
+<text class="eyebrow" x="30" y="500">PUBLISHED AS CSV</text>
+<text class="name" x="30" y="517">Two public tabs</text>
+<text class="sub" x="30" y="533" xml:space="preserve">Public_Evenings, Public_Scores.</text>
+<text class="sub" x="30" y="546" xml:space="preserve">IDs, dates, choosers,</text>
+<text class="sub" x="30" y="559" xml:space="preserve">restaurants, statuses and scores.</text>
+<text class="sub" x="30" y="572" xml:space="preserve">Nothing else leaves the Sheet.</text>
+</g>
+<g class="node role-clock">
+<rect x="340" y="40" width="220" height="76" rx="7"/>
+<text class="eyebrow" x="350" y="56">CLOCK</text>
+<text class="name" x="350" y="73">GitHub&#x27;s own timer</text>
+<text class="sub" x="350" y="89" xml:space="preserve">Every 6 hours. A push to main or</text>
+<text class="sub" x="350" y="102" xml:space="preserve">a manual run starts one too.</text>
+</g>
+<g class="node role-worker">
+<rect x="340" y="160" width="220" height="180" rx="7"/>
+<text class="eyebrow" x="350" y="176">WORKER</text>
+<text class="name" x="350" y="193">GitHub Actions run</text>
+<text class="sub" x="350" y="209" xml:space="preserve">A few minutes each time:</text>
+<text class="sub" x="350" y="222" xml:space="preserve">1 · Fetch the two public CSVs.</text>
+<text class="sub" x="350" y="235" xml:space="preserve">2 · Keep only the named columns;</text>
+<text class="sub" x="350" y="248" xml:space="preserve">    stop on any email, link or note.</text>
+<text class="sub" x="350" y="261" xml:space="preserve">3 · Check every row against the</text>
+<text class="sub" x="350" y="274" xml:space="preserve">    data contract.</text>
+<text class="sub" x="350" y="287" xml:space="preserve">4 · Work out every statistic.</text>
+<text class="sub" x="350" y="300" xml:space="preserve">5 · Test, build, scan the output.</text>
+<text class="sub" x="350" y="313" xml:space="preserve">6 · Publish. Any failure stops the</text>
+<text class="sub" x="350" y="326" xml:space="preserve">    run and the old site stays up.</text>
+</g>
+<g class="node role-store">
+<rect x="340" y="400" width="220" height="76" rx="7"/>
+<text class="eyebrow" x="350" y="416">CONFIG</text>
+<text class="name" x="350" y="433">This repo</text>
+<text class="sub" x="350" y="449" xml:space="preserve">wizards.json: roster, membership.</text>
+<text class="sub" x="350" y="462" xml:space="preserve">overrides.json: official winners.</text>
+</g>
+<g class="node role-ext">
+<rect x="640" y="160" width="170" height="89" rx="7"/>
+<text class="eyebrow" x="650" y="176">OUTPUT</text>
+<text class="name" x="650" y="193">GitHub Pages</text>
+<text class="sub" x="650" y="209" xml:space="preserve">The finished website and</text>
+<text class="sub" x="650" y="222" xml:space="preserve">its data files. No server;</text>
+<text class="sub" x="650" y="235" xml:space="preserve">browsers never call Google.</text>
+</g>
+<g class="node role-people">
+<rect x="640" y="400" width="170" height="89" rx="7"/>
+<text class="eyebrow" x="650" y="416">PEOPLE</text>
+<text class="name" x="650" y="433">The owner</text>
+<text class="sub" x="650" y="449" xml:space="preserve">Adds wizards, records</text>
+<text class="sub" x="650" y="462" xml:space="preserve">official winners, and can</text>
+<text class="sub" x="650" y="475" xml:space="preserve">fix the Sheet by hand.</text>
+</g>
+<g class="node role-people">
+<rect x="870" y="40" width="160" height="102" rx="7"/>
+<text class="eyebrow" x="880" y="56">PEOPLE</text>
+<text class="name" x="880" y="73">The wizards&#x27; phones</text>
+<text class="sub" x="880" y="89" xml:space="preserve">Open the site from</text>
+<text class="sub" x="880" y="102" xml:space="preserve">WhatsApp. After a Council,</text>
+<text class="sub" x="880" y="115" xml:space="preserve">record it and score it</text>
+<text class="sub" x="880" y="128" xml:space="preserve">through the form.</text>
+</g>
+</g>
+</svg>

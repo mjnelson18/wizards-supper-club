@@ -4,6 +4,27 @@ A public, read-only website that turns the Wizards' Google Sheet into a record o
 
 The Sheet stays the single source of truth. GitHub Actions fetches two purpose-built public tabs, checks them, works out every statistic and publishes a static site to GitHub Pages. The browser never calls Google, so the site keeps working if the Sheet is unavailable.
 
+Live site: <https://mjnelson18.github.io/wizards-supper-club/>
+
+## How it fits together
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/architecture-wizards-dark.svg">
+  <img alt="Architecture: wizards fill in one Google Form; an Apps Script writes each answer into the Google Sheet, which is the source of truth. Two filtered tabs are published as CSV. A GitHub Actions run, woken by GitHub's timer every 6 hours or by the form script a few minutes after a submission, fetches the CSVs, checks them, works out the statistics using the roster and official winners kept in this repo, and publishes a static site to GitHub Pages, which the wizards read on their phones." src="docs/architecture-wizards.svg" width="1050">
+</picture>
+
+Boxes are roles: a **clock** that decides when to run, **workers** (the form script and the GitHub
+Actions computer) that run for a moment and stop, **outside services** read from or published to,
+**memory** between runs, and **people**. Dashed arrows are wake-up calls carrying no data; solid
+arrows move data; dotted arrows are things only a person does. There is no AI step.
+
+Scores go in through one Google Form. A script behind it writes each answer into the Sheet, which
+holds everything, including reviews that are never published. Only two filtered tabs leave the Sheet,
+as CSV. The GitHub Actions run fetches those, refuses anything that looks like an email, a link or
+free text, works out every statistic and publishes finished files. The site has no server: visitors
+download those files, so it keeps working if the Sheet is unavailable, and a failed run leaves the
+previous version live.
+
 ## Owner setup (one-off)
 
 ### 1. In the Sheet
@@ -41,7 +62,8 @@ GitHub pauses scheduled runs in a repo with no activity for 60 days and emails y
    - `sheetName`: the name exactly as it appears in the Sheet.
    - `displayName`: what the site shows.
    - `memberFrom`: their first circuit. `memberUntil`: their last circuit, or `null` while they are a member.
-3. Commit to `main`. The site rebuilds.
+3. Add them to `SF_WIZARDS` at the top of the score form script in Apps Script (and in [apps-script/ScoreForm.gs](apps-script/ScoreForm.gs)), then run `refreshScoreForm` there so they appear in the form. A unit test fails if the two rosters drift apart.
+4. Commit to `main`. The site rebuilds.
 
 When someone leaves, set `memberUntil` to their last circuit. They stop being "due" and their attendance is only counted for the circuits they were in.
 
@@ -65,6 +87,35 @@ To record a result the group has declared, edit [config/overrides.json](config/o
 - `evening`: only needed when the winner hosted more than one evening in that circuit.
 - `announced`: optional date. The home page shows a finished circuit's winner for 60 days after it.
 - `final`: marks a circuit as finished and keeps the calculated winner. Use it for old circuits that would otherwise stay provisional because of unknown attendance.
+
+## Scoring future evenings
+
+[apps-script/ScoreForm.gs](apps-script/ScoreForm.gs) creates one permanent Google Form that is reused for every evening. It writes into the same Evenings and Log tabs as the catch-up form, so the site picks the results up with no further setup.
+
+After each Council:
+
+1. **The chooser** opens the form, picks "Record a new evening" and gives the restaurant, date, circuit and who was there. That adds the evening to the Evenings tab and a Log row per wizard: TBC (score owed) for those there, DNA for the rest.
+2. **Everyone who went** opens the same link, picks "Score an evening", chooses the evening and gives a score from 0 to 10. They can also say they were not there, or ask for the evening's average. Submitting again corrects an earlier answer.
+
+Reviews typed into the form stay in the Log tab's private "Review / note" column, which is never published.
+
+### Setting it up (once, at a computer)
+
+1. Open <https://script.google.com> and open the project that holds the catch-up form script.
+2. Press + next to Files → Script, name it `ScoreForm`, paste in the whole of `apps-script/ScoreForm.gs` and save.
+3. Choose `setupScoreForm` in the function dropdown and press Run, then allow the permissions.
+4. The execution log shows the form's share link. Pin it in WhatsApp.
+
+Take a copy of the Sheet first (File → Make a copy) the first time you use it. The script only ever updates a wizard's own row or adds rows, and its sheet-writing logic is unit-tested here against a fake Sheet, but it has not been run inside Google by these tests.
+
+### Near-instant updates (optional)
+
+Without this, new scores reach the site at the next 6-hourly rebuild.
+
+1. On GitHub: Settings → Developer settings → Personal access tokens → Fine-grained tokens → generate one limited to this repo with **Contents: Read and write**.
+2. In the Apps Script project: Project Settings → Script properties → add `GITHUB_TOKEN` with that token.
+
+The script then asks for one rebuild about 7 minutes after a submission. The wait is deliberate: Google's published CSV lags the Sheet by a few minutes.
 
 ## Privacy
 
@@ -112,6 +163,7 @@ src/lib/ingest.ts           CSV parsing, privacy guards, data contract
 src/lib/*.test.ts           unit tests
 src/pages/                  Home, Circuits, Restaurants, Wizards, Trends, Records, Methods
 tests/smoke.spec.ts         browser smoke test
+apps-script/ScoreForm.gs    the reusable score form (runs in Google Apps Script)
 public/data/                generated JSON (gitignored; built in CI)
 .github/workflows/deploy.yml
 ```

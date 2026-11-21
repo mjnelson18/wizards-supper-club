@@ -9,7 +9,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   build: { sourcemap: false },
   test: {
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'apps-script/**/*.test.ts'],
     exclude: ['src/lib/known-values.test.ts'],
     environment: 'node',
   },

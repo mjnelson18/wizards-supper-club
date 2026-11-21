@@ -7,3 +7,7 @@ playwright-report/
 .env.*
 *.local
 .DS_Store
+
+# The catch-up form script holds private memory-joggers about each evening
+# (who was there, costs, a guest's name). It must never be committed.
+Wizards_catchup_setup.gs
