@@ -77,6 +77,13 @@ function load(evenings = EVENINGS, log = LOG, publicFormula: string | null = OLD
   const ctx = vm.createContext({
     Utilities: { formatDate: (d: Date) => d.toISOString().slice(0, 10) },
     Logger: { log: (m: string) => logged.push(m) },
+    FormApp: {
+      ItemType: { LIST: 'LIST', TEXT: 'TEXT' },
+      createTextValidation: () => {
+        const v = { setHelpText: () => v, requireTextLengthLessThanOrEqualTo: () => v, requireNumberBetween: () => v, build: () => v };
+        return v;
+      },
+    },
   });
   vm.runInContext(readFileSync('apps-script/ScoreForm.gs', 'utf8'), ctx);
   // The script's globals are untyped: this is a sandbox, not a module.
@@ -319,5 +326,114 @@ describe('cuisine', () => {
   it('only offers cuisines the website knows how to place', () => {
     const regions = Object.keys(JSON.parse(readFileSync('config/cuisines.json', 'utf8')).regions).sort();
     expect([...t.gs.SF_CUISINES].sort()).toEqual(regions);
+  });
+});
+
+// A stand-in for a Google Form. Like the real one, moveItem and deleteItem
+// here only accept positions (numbers), which is what the first upgrade got wrong.
+class FakeForm {
+  items: FakeItem[] = [];
+  private nextId = 100;
+  moveFails = false;
+  add(type: string, title: string) {
+    const item = new FakeItem(this, this.nextId++, type, title);
+    this.items.push(item);
+    return item;
+  }
+  addListItem() {
+    return this.add('LIST', '');
+  }
+  addTextItem() {
+    return this.add('TEXT', '');
+  }
+  getItems(type: string) {
+    return this.items.filter((i) => i.type === type);
+  }
+  getItemById(id: number) {
+    return this.items.find((i) => i.id === id) ?? null;
+  }
+  moveItem(from: unknown, to: unknown) {
+    if (this.moveFails || typeof from !== 'number' || typeof to !== 'number') {
+      throw new Error("The parameters don't match the method signature for FormApp.Form.moveItem.");
+    }
+    const [item] = this.items.splice(from, 1);
+    this.items.splice(to, 0, item);
+  }
+  deleteItem(index: unknown) {
+    if (typeof index !== 'number') throw new Error("The parameters don't match the method signature for FormApp.Form.deleteItem.");
+    this.items.splice(index, 1);
+  }
+  titles() {
+    return this.items.map((i) => i.title);
+  }
+}
+
+class FakeItem {
+  choices: string[] = [];
+  constructor(private form: FakeForm, public id: number, public type: string, public title: string) {}
+  getId = () => this.id;
+  getIndex = () => this.form.items.indexOf(this);
+  getTitle = () => this.title;
+  setTitle = (t: string) => ((this.title = t), this);
+  setHelpText = () => this;
+  setRequired = () => this;
+  setValidation = () => this;
+  setChoiceValues = (c: string[]) => ((this.choices = [...c]), this);
+  asListItem = () => this;
+  asTextItem = () => this;
+}
+
+describe('adding the cuisine questions to the form', () => {
+  const CUISINE = 'What kind of food was it?';
+  const OTHER = 'If something else, which cuisine?';
+  const base = () => {
+    const form = new FakeForm();
+    form.add('MULTIPLE_CHOICE', 'What are you here to do?');
+    const restaurant = form.add('TEXT', 'Restaurant');
+    form.add('DATE', 'When was it?');
+    form.add('CHECKBOX', 'Who was there?');
+    return { form, restaurant };
+  };
+
+  it('puts both questions straight after Restaurant', () => {
+    const { form, restaurant } = base();
+    const ids = t.gs.sfAddCuisineItems_(form, restaurant.id);
+    expect(form.titles()).toEqual(['What are you here to do?', 'Restaurant', CUISINE, OTHER, 'When was it?', 'Who was there?']);
+    expect(form.getItemById(ids.cuisine)?.title).toBe(CUISINE);
+    expect(form.getItemById(ids.cuisineOther)?.title).toBe(OTHER);
+    const choices = form.getItemById(ids.cuisine)!.choices;
+    expect(choices).toContain('Thai');
+    expect(choices[choices.length - 1]).toBe(t.gs.SF_OTHER);
+  });
+
+  it('picks up questions left at the end by a run that stopped part-way', () => {
+    const { form, restaurant } = base();
+    const left = form.add('LIST', CUISINE);
+    const leftOther = form.add('TEXT', OTHER);
+    const ids = t.gs.sfAddCuisineItems_(form, restaurant.id);
+    expect(ids).toEqual({ cuisine: left.id, cuisineOther: leftOther.id });
+    expect(form.titles()).toEqual(['What are you here to do?', 'Restaurant', CUISINE, OTHER, 'When was it?', 'Who was there?']);
+    expect(left.choices.length).toBeGreaterThan(40);
+  });
+
+  it('removes duplicates left by several failed runs, and is safe to repeat', () => {
+    const { form, restaurant } = base();
+    for (let i = 0; i < 3; i++) {
+      form.add('LIST', CUISINE);
+      form.add('TEXT', OTHER);
+    }
+    const first = t.gs.sfAddCuisineItems_(form, restaurant.id);
+    const second = t.gs.sfAddCuisineItems_(form, restaurant.id);
+    expect(second).toEqual(first);
+    expect(form.titles()).toEqual(['What are you here to do?', 'Restaurant', CUISINE, OTHER, 'When was it?', 'Who was there?']);
+  });
+
+  it('still works if the questions cannot be moved', () => {
+    const { form, restaurant } = base();
+    form.moveFails = true;
+    const ids = t.gs.sfAddCuisineItems_(form, restaurant.id);
+    expect(form.titles().slice(-2)).toEqual([CUISINE, OTHER]);
+    expect(form.getItemById(ids.cuisine)?.title).toBe(CUISINE);
+    expect(t.logged.join(' ')).toContain('still work');
   });
 });

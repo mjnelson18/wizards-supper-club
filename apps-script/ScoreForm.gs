@@ -59,6 +59,8 @@ var SF_CUISINES = [
   'Portuguese', 'Scottish', 'South African', 'Spanish', 'Sri Lankan', 'Thai', 'Turkish', 'Vietnamese', 'West African'
 ];
 var SF_OTHER = 'Something else (say which below)';
+var SF_CUISINE_TITLE = 'What kind of food was it?';
+var SF_CUISINE_OTHER_TITLE = 'If something else, which cuisine?';
 var SF_CUISINE_COLUMN = 8;                          // Evenings column H
 var SF_PUBLIC_EVENINGS = '=QUERY(Evenings!A:H,"select A,B,C,D,E,F,H where A is not null",1)';
 
@@ -188,18 +190,40 @@ function upgradeScoreForm() {
   refreshScoreForm();
 }
 
-/** Add the two cuisine questions straight after the Restaurant question. */
+/**
+ * Make sure the form has the two cuisine questions, straight after the
+ * Restaurant question. Reuses questions left behind by an earlier run that
+ * stopped part-way, so it never creates duplicates.
+ */
 function sfAddCuisineItems_(form, restaurantItemId) {
-  var cuisine = form.addListItem().setTitle('What kind of food was it?')
-    .setHelpText('Pick the closest. It feeds the Cuisines page on the website.')
+  // The first question with this title, removing any later copies.
+  var existing = function (title, type) {
+    var found = form.getItems(type).filter(function (item) { return item.getTitle() === title; });
+    found.slice(1).forEach(function (extra) { form.deleteItem(extra.getIndex()); });
+    return found[0] || null;
+  };
+
+  var cuisineItem = existing(SF_CUISINE_TITLE, FormApp.ItemType.LIST);
+  var cuisine = cuisineItem ? cuisineItem.asListItem() : form.addListItem().setTitle(SF_CUISINE_TITLE);
+  cuisine.setHelpText('Pick the closest. It feeds the Cuisines page on the website.')
     .setRequired(true)
     .setChoiceValues(SF_CUISINES.concat([SF_OTHER]));
-  var other = form.addTextItem().setTitle('If something else, which cuisine?')
-    .setHelpText('Only needed if the list above did not have it. A couple of words, e.g. Korean.')
+
+  var otherItem = existing(SF_CUISINE_OTHER_TITLE, FormApp.ItemType.TEXT);
+  var other = otherItem ? otherItem.asTextItem() : form.addTextItem().setTitle(SF_CUISINE_OTHER_TITLE);
+  other.setHelpText('Only needed if the list above did not have it. A couple of words, e.g. Korean.')
     .setValidation(FormApp.createTextValidation().setHelpText('Keep it to 40 characters.').requireTextLengthLessThanOrEqualTo(40).build());
-  var after = form.getItemById(restaurantItemId).getIndex();
-  form.moveItem(cuisine, after + 1);
-  form.moveItem(other, after + 2);
+
+  // New questions land at the end of the form, which is the end of the
+  // "Record a new evening" page. Moving them up is tidier but not essential,
+  // so a failure here is reported and the questions are left where they work.
+  try {
+    var after = form.getItemById(restaurantItemId).getIndex();
+    form.moveItem(cuisine.getIndex(), after + 1);
+    form.moveItem(other.getIndex(), after + 2);
+  } catch (err) {
+    Logger.log('Could not move the cuisine questions up beside Restaurant (' + err + '). They still work at the end of that page.');
+  }
   return { cuisine: cuisine.getId(), cuisineOther: other.getId() };
 }
 
