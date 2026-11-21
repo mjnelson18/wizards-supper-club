@@ -86,7 +86,7 @@ export interface EveningStats extends Evening {
   average: number | null;
   gymnastic: number | null;
   adjusted: number | null;
-  /** Sample standard deviation; null under 3 scores. */
+  /** Population standard deviation; null under 3 scores. */
   sd: number | null;
   min: number | null;
   max: number | null;
@@ -154,7 +154,7 @@ export interface CircuitStats {
   nScores: number;
   /** Mean of every score given in the circuit. */
   mean: number | null;
-  /** Sample standard deviation of every score given in the circuit. */
+  /** Population standard deviation of every score given in the circuit. */
   sd: number | null;
   box: FiveNumber | null;
   /** Count of scores by whole number: index 0 = 0-0.99 ... index 10 = exactly 10. */

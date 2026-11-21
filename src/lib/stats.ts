@@ -40,11 +40,15 @@ export function mean(xs: number[]): number | null {
   return xs.length ? sum(xs) / xs.length : null;
 }
 
-/** Sample standard deviation (n - 1), as STDEV gives in a spreadsheet. */
+/**
+ * Population standard deviation (divide by n), as STDEVP gives in a
+ * spreadsheet. This is the form the original spreadsheet used: it reproduces
+ * Milk Beach's quoted 1.97.
+ */
 export function standardDeviation(xs: number[]): number | null {
   if (xs.length < 2) return null;
   const m = sum(xs) / xs.length;
-  return Math.sqrt(sum(xs.map((x) => (x - m) ** 2)) / (xs.length - 1));
+  return Math.sqrt(sum(xs.map((x) => (x - m) ** 2)) / xs.length);
 }
 
 /** Drop the single highest and single lowest score, average the rest. */

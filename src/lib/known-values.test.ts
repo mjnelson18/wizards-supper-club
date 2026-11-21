@@ -3,6 +3,10 @@
 //
 // It is not part of the normal test run: these figures are a snapshot, and they
 // are expected to move once the catch-up form fills in missing scores.
+//
+// First run against the real Sheet on 21 Nov 2026: the catch-up form had
+// already added scores (324 -> 353 in total; Barang 3 -> 6, still on 9.00), so
+// those two counts are checked as "at least" the 18 Nov figure.
 
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -24,10 +28,10 @@ describe.runIf(real)('known values from the Sheet (18 Nov 2026)', () => {
   const circuit = (n: number) => s.circuits.find((c) => c.circuit === n)!;
   const two = (n: number | null) => Number((n as number).toFixed(2));
 
-  it('has 60 evenings across circuits 1-8 and 324 scores', () => {
+  it('has 60 evenings across circuits 1-8 and at least 324 scores', () => {
     expect(s.evenings).toHaveLength(60);
     expect(s.circuits.map((c) => c.circuit)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
-    expect(s.totalScores).toBe(324);
+    expect(s.totalScores).toBeGreaterThanOrEqual(324);
   });
 
   it('C6-02 Ivan Mazemen (Dyson): 8.92 from 6 scores, winner of the 6th circuit', () => {
@@ -42,6 +46,7 @@ describe.runIf(real)('known values from the Sheet (18 Nov 2026)', () => {
     expect(two(ev('C5-01').average)).toBe(8.75);
     expect(ev('C5-01').nScores).toBe(4);
     expect(circuit(5).winner?.wizard).toBe('Charles');
+    expect(circuit(5).provisional).toBe(false);
   });
 
   it('C4 winner: Hammer & Tongs (Mike), 8.71', () => {
@@ -77,14 +82,14 @@ describe.runIf(real)('known values from the Sheet (18 Nov 2026)', () => {
     expect(two(ev('C6-09').sd)).toBe(1.97);
   });
 
-  it('7th circuit is provisional; Barang leads qualified evenings on 9.00 from 3 scores', () => {
+  it('7th circuit is provisional; Barang leads qualified evenings on 9.00 from 3 or more scores', () => {
     const c7 = circuit(7);
     expect(c7.provisional).toBe(true);
     expect(c7.provisionalReasons).toEqual(expect.arrayContaining(['TBC', 'UNK']));
     const leader = ev(c7.leaderboard[0]);
     expect(leader.restaurant).toMatch(/Barang/i);
     expect(two(leader.average)).toBe(9);
-    expect(leader.nScores).toBe(3);
+    expect(leader.nScores).toBeGreaterThanOrEqual(3);
     expect(named('Barrafina').id).toBe('C7-10');
   });
 

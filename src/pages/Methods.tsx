@@ -41,7 +41,7 @@ export function Methods() {
           <Term name="Evening average">The mean of the evening's Scored and Imputed scores.</Term>
           <Term name="Gymnastic score">Drop the single highest and the single lowest score and average the rest. Needs 3 or more scores.</Term>
           <Term name="Absentee-adjusted average">An estimate of what the evening would have scored had everyone come. Each absentee is assumed to give the evening average, shifted by their own score index: (sum of scores + evening average × number absent + the absentees' score indexes) ÷ (number of scores + number absent).</Term>
-          <Term name="Divisiveness">The standard deviation of an evening's scores (the sample form, as a spreadsheet's STDEV gives). Needs 3 or more scores. Higher means the table disagreed more.</Term>
+          <Term name="Divisiveness">The standard deviation of an evening's scores (the population form, as a spreadsheet's STDEVP gives). Needs 3 or more scores. Higher means the table disagreed more.</Term>
           <Term name="Circuit average">The mean of every individual score given in the circuit.</Term>
         </dl>
       </Card>

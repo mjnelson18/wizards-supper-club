@@ -110,7 +110,7 @@ export function CircuitDetail() {
           <p className="mt-1 text-sm text-ink-2">Official result as declared by the group{c.announced ? ` on ${fmtDateRange(c.announced, c.announced)}` : ''}.</p>
         )}
         {c.provisional && <p className="mt-1 text-sm text-ink-2">Provisional while {whyProvisional(c)}.</p>}
-        {c.due.length > 0 && (
+        {c.provisional && c.due.length > 0 && (
           <p className="mt-1 text-sm text-ink-2">
             Still to host: {list(c.due.map(data.name))}.
           </p>

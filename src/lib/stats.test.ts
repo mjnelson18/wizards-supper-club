@@ -52,8 +52,10 @@ describe('maths helpers', () => {
     expect(gymnastic([10, 10, 7, 1, 1])).toBe(6);
   });
 
-  it('divisiveness is the sample standard deviation, 3+ scores only', () => {
-    expect(divisiveness([8, 6, 5, 5, 4, 4, 3])).toBeCloseTo(Math.sqrt(16 / 6), 10);
+  it('divisiveness is the population standard deviation, 3+ scores only', () => {
+    expect(divisiveness([8, 6, 5, 5, 4, 4, 3])).toBeCloseTo(Math.sqrt(16 / 7), 10);
+    // Milk Beach (C6-09), quoted in the spec as 1.97.
+    expect(divisiveness([5.5, 4, 5, 10, 5.5, 4.5])?.toFixed(2)).toBe('1.97');
     expect(divisiveness([7, 7, 7])).toBe(0);
     expect(divisiveness([9, 2])).toBeNull();
   });
