@@ -27,6 +27,12 @@ export interface Evening {
   /** Sheet name of the chooser. */
   chooser: string;
   restaurant: string;
+  /**
+   * Cuisine as typed into the Sheet's optional Cuisine column (the score form
+   * fills it in). The resolved cuisine and region are worked out from this
+   * and config/cuisines.json together.
+   */
+  cuisine?: string | null;
 }
 
 export interface ScoreEntry {

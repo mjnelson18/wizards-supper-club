@@ -76,7 +76,14 @@ type Row = Record<string, string>;
  * Keep only the named columns, matched by header. Every other column is
  * dropped before anything else looks at the data.
  */
-function whitelist(csv: string, tab: string, columns: Record<string, string>, issues: string[]): { row: Row; line: number }[] {
+function whitelist(
+  csv: string,
+  tab: string,
+  columns: Record<string, string>,
+  issues: string[],
+  /** Columns that may be absent; they read as blank when they are. */
+  optional: Record<string, string> = {},
+): { row: Row; line: number }[] {
   const table = parseCsv(csv);
   const header = (table[0] ?? []).map((h) => h.trim().toLowerCase());
   if (header.some((h) => h.startsWith('<!doctype') || h.startsWith('<html'))) {
@@ -89,11 +96,12 @@ function whitelist(csv: string, tab: string, columns: Record<string, string>, is
     if (index[key] === -1) issues.push(`${tab}: missing column "${name}"`);
   }
   if (Object.values(index).includes(-1)) return [];
+  for (const [key, name] of Object.entries(optional)) index[key] = header.indexOf(name.toLowerCase());
 
   const out: { row: Row; line: number }[] = [];
   table.slice(1).forEach((cells, i) => {
     const row: Row = {};
-    for (const key of Object.keys(columns)) row[key] = (cells[index[key]] ?? '').trim();
+    for (const key of Object.keys(index)) row[key] = index[key] === -1 ? '' : (cells[index[key]] ?? '').trim();
     if (Object.values(row).every((v) => v === '')) return;
     out.push({ row, line: i + 2 });
   });
@@ -134,6 +142,7 @@ export function parseEvenings(csv: string, wizards: WizardConfig[]): Evening[] {
     'Public_Evenings',
     { id: 'Evening ID', circuit: 'Circuit', number: 'No. in circuit', date: 'Date', chooser: 'Chooser', restaurant: 'Restaurant' },
     issues,
+    { cuisine: 'Cuisine' },
   );
   const out: Evening[] = [];
   const seen = new Set<string>();
@@ -166,6 +175,7 @@ export function parseEvenings(csv: string, wizards: WizardConfig[]): Evening[] {
       date: r.date === '' ? null : r.date,
       chooser: chooser.sheetName,
       restaurant: r.restaurant,
+      ...(row.cuisine ? { cuisine: row.cuisine } : {}),
     });
   }
   if (!issues.length && !out.length) issues.push('Public_Evenings: no rows');
@@ -307,9 +317,14 @@ const cuisineSchema = z.object({
   ),
 });
 
+/** Where a cuisine typed into the Sheet goes until it is given a region. */
+export const FALLBACK_REGION = 'Elsewhere';
+
 /**
- * config/cuisines.json. A cuisine with no region is an error; an evening
- * with no cuisine is only a warning, so a new evening never blocks a deploy.
+ * Resolve each evening's cuisine and region. The Sheet's Cuisine column comes
+ * first; config/cuisines.json fills the gaps (all the history) and holds the
+ * cuisine-to-region list. Nothing here blocks a deploy except a broken config
+ * file: an unknown or missing cuisine is only a warning.
  */
 export function parseCuisines(
   json: unknown,
@@ -327,6 +342,22 @@ export function parseCuisines(
   for (const [cuisine, region] of Object.entries(regions)) {
     issues.push(...guardCell(cuisine, 'config/cuisines.json cuisine', 40), ...guardCell(region, 'config/cuisines.json region', 40));
   }
+  // A cuisine recorded in the Sheet (by the score form) wins over this file.
+  const canonical = new Map(Object.keys(regions).map((c) => [c.toLowerCase(), c]));
+  for (const e of evenings) {
+    const typed = e.cuisine?.trim();
+    if (!typed) continue;
+    const known = canonical.get(typed.toLowerCase());
+    if (known) {
+      tags[e.id] = { cuisine: known, region: regions[known] };
+    } else {
+      tags[e.id] = { cuisine: typed, region: FALLBACK_REGION };
+      warnings.push(
+        `${e.id} ${e.restaurant}: cuisine "${typed}" from the Sheet is not listed under "regions" in config/cuisines.json, so it is filed under "${FALLBACK_REGION}". Add it there to place it properly.`,
+      );
+    }
+  }
+
   for (const [id, entry] of Object.entries(entries)) {
     const region = regions[entry.cuisine];
     if (!region) {
@@ -341,11 +372,13 @@ export function parseCuisines(
     if (options.checkLabels !== false && entry.restaurant && entry.restaurant.trim().toLowerCase() !== evening.restaurant.trim().toLowerCase()) {
       warnings.push(`config/cuisines.json: ${id} is labelled "${entry.restaurant}" but the Sheet says "${evening.restaurant}"`);
     }
-    tags[id] = { cuisine: entry.cuisine, region };
+    if (!tags[id]) tags[id] = { cuisine: entry.cuisine, region };
   }
   if (issues.length) throw new DataError(issues);
 
   const missing = evenings.filter((e) => !tags[e.id]).map((e) => `${e.id} ${e.restaurant}`);
-  if (missing.length) warnings.push(`No cuisine recorded for: ${missing.join('; ')}. Add them to config/cuisines.json.`);
+  if (missing.length) {
+    warnings.push(`No cuisine recorded for: ${missing.join('; ')}. Fill in the Cuisine column in the Sheet, or add them to config/cuisines.json.`);
+  }
   return { tags, warnings };
 }

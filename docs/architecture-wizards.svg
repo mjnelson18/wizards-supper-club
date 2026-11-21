@@ -25,8 +25,8 @@ svg { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
 <rect width="1050" height="650" fill="#ffffff"/>
 <g transform="translate(0,26)">
 <polyline class="edge edge-human" points="950,40 950,14 120,14 120,40" marker-end="url(#arrow-h)"/>
-<rect class="lbl-bg" x="435.5" y="-4" width="199" height="15" rx="3"/>
-<text class="lbl lbl-human" x="535" y="7" text-anchor="middle">record an evening · give a score</text>
+<rect class="lbl-bg" x="387.5" y="-4" width="295" height="15" rx="3"/>
+<text class="lbl lbl-human" x="535" y="7" text-anchor="middle">record an evening and its cuisine · give a score</text>
 <polyline class="edge edge-data" points="120,129 120,173" marker-end="url(#arrow)"/>
 <rect class="lbl-bg" x="124" y="143" width="49" height="15" rx="3"/>
 <text class="lbl lbl-data" x="128" y="154" text-anchor="start">answers</text>
@@ -89,7 +89,7 @@ svg { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
 <text class="eyebrow" x="30" y="500">PUBLISHED AS CSV</text>
 <text class="name" x="30" y="517">Two public tabs</text>
 <text class="sub" x="30" y="533" xml:space="preserve">Public_Evenings, Public_Scores.</text>
-<text class="sub" x="30" y="546" xml:space="preserve">IDs, dates, choosers,</text>
+<text class="sub" x="30" y="546" xml:space="preserve">IDs, dates, choosers, cuisines,</text>
 <text class="sub" x="30" y="559" xml:space="preserve">restaurants, statuses and scores.</text>
 <text class="sub" x="30" y="572" xml:space="preserve">Nothing else leaves the Sheet.</text>
 </g>
@@ -121,7 +121,7 @@ svg { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
 <text class="name" x="350" y="433">This repo</text>
 <text class="sub" x="350" y="449" xml:space="preserve">wizards.json: roster, membership.</text>
 <text class="sub" x="350" y="462" xml:space="preserve">overrides.json: official winners.</text>
-<text class="sub" x="350" y="475" xml:space="preserve">cuisines.json: evening cuisines.</text>
+<text class="sub" x="350" y="475" xml:space="preserve">cuisines.json: regions, history.</text>
 </g>
 <g class="node role-ext">
 <rect x="640" y="160" width="170" height="89" rx="7"/>

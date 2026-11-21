@@ -27,6 +27,14 @@
  * If you would rather keep it in a separate project, paste the Sheet's ID
  * (the long code in its web address) into SF_SHEET_ID below first.
  *
+ * UPGRADING AN EXISTING FORM (to add the cuisine question)
+ * 1. Open ScoreForm.gs in the project, select everything, paste this whole
+ *    file over it and save.
+ * 2. Choose `upgradeScoreForm` in the function dropdown and press Run.
+ *    It adds a Cuisine column to the Evenings tab, makes Public_Evenings
+ *    publish it, and adds the cuisine question to the same form. The form's
+ *    link does not change. Running it twice does no harm.
+ *
  * Run `setupScoreForm` once only; a second run just prints the existing
  * links. If you edit the Evenings tab by hand, the form's list of evenings
  * updates itself; `refreshScoreForm` does the same on demand.
@@ -40,6 +48,19 @@ var SF_WIZARDS = [
   ['Calum', 'Calum'], ['Charlie', 'Charles'], ['Craig', 'Craig'], ['Dan', 'Daniel'], ['James', 'James'],
   ['Mike', 'Michael'], ['Tom', 'Thomas'], ['Jonny', 'Jonathan'], ['Dyson', 'Jeremy']
 ];
+
+// Cuisines offered when recording an evening. Keep in step with "regions" in
+// config/cuisines.json in the website repo, which says where each one belongs.
+var SF_CUISINES = [
+  'American', 'Argentinian', 'Australian', 'Barbecue & grill', 'Brazilian', 'British', 'Burmese', 'Cambodian',
+  'Caribbean', 'Chinese', 'Ethiopian', 'Exotic meats', 'Filipino', 'French', 'Fried chicken', 'Georgian', 'Greek',
+  'Indian', 'Indonesian', 'Irish', 'Israeli', 'Italian', 'Japanese', 'Korean', 'Lebanese', 'Malaysian',
+  'Mediterranean', 'Mexican', 'Middle Eastern', 'Nordic', 'Pakistani', 'Pan-Asian', 'Persian', 'Peruvian',
+  'Portuguese', 'Scottish', 'South African', 'Spanish', 'Sri Lankan', 'Thai', 'Turkish', 'Vietnamese', 'West African'
+];
+var SF_OTHER = 'Something else (say which below)';
+var SF_CUISINE_COLUMN = 8;                          // Evenings column H
+var SF_PUBLIC_EVENINGS = '=QUERY(Evenings!A:H,"select A,B,C,D,E,F,H where A is not null",1)';
 
 var SF_SHEET_ID = '';                               // only needed in a separate project
 var SF_REPO = 'mjnelson18/wizards-supper-club';     // website repo to rebuild
@@ -75,6 +96,8 @@ function setupScoreForm() {
 
   var ss = sfSpreadsheet_();
   sfCheckSheet_(ss);
+  sfEnsureCuisineColumn_(ss);
+  sfUpdatePublicTab_(ss);
   var names = SF_WIZARDS.map(function (w) { return w[0]; });
 
   var form = FormApp.create('Wizards: score the evening');
@@ -121,11 +144,14 @@ function setupScoreForm() {
     there.createChoice(SF_THERE.ABSENT, FormApp.PageNavigationType.SUBMIT)
   ]);
 
+  var cuisineItems = sfAddCuisineItems_(form, restaurant.getId());
+
   props.setProperty('SF_FORM_ID', form.getId());
   props.setProperty('SF_ITEMS', JSON.stringify({
     action: action.getId(), evening: evening.getId(), who: who.getId(), there: there.getId(),
     score: score.getId(), review: review.getId(), restaurant: restaurant.getId(), date: date.getId(),
-    chooser: chooser.getId(), circuit: circuit.getId(), present: present.getId()
+    chooser: chooser.getId(), circuit: circuit.getId(), present: present.getId(),
+    cuisine: cuisineItems.cuisine, cuisineOther: cuisineItems.cuisineOther
   }));
 
   refreshScoreForm();
@@ -135,6 +161,46 @@ function setupScoreForm() {
   Logger.log('Form (share – pin this in WhatsApp): ' + form.getPublishedUrl());
   Logger.log('Form (edit): ' + form.getEditUrl());
   Logger.log('Sheet: ' + ss.getUrl());
+}
+
+/**
+ * Bring a form made by an earlier version of this script up to date: adds the
+ * Cuisine column, publishes it, and adds the cuisine question. Safe to rerun.
+ */
+function upgradeScoreForm() {
+  var props = PropertiesService.getScriptProperties();
+  if (!props.getProperty('SF_FORM_ID')) throw new Error('No score form yet. Run setupScoreForm instead.');
+  var ss = sfSpreadsheet_();
+  sfEnsureCuisineColumn_(ss);
+  sfUpdatePublicTab_(ss);
+
+  var ids = JSON.parse(props.getProperty('SF_ITEMS'));
+  if (ids.cuisine) {
+    Logger.log('The form already asks for the cuisine.');
+  } else {
+    var form = FormApp.openById(props.getProperty('SF_FORM_ID'));
+    var added = sfAddCuisineItems_(form, ids.restaurant);
+    ids.cuisine = added.cuisine;
+    ids.cuisineOther = added.cuisineOther;
+    props.setProperty('SF_ITEMS', JSON.stringify(ids));
+    Logger.log('Added the cuisine question to the form. Its link is unchanged.');
+  }
+  refreshScoreForm();
+}
+
+/** Add the two cuisine questions straight after the Restaurant question. */
+function sfAddCuisineItems_(form, restaurantItemId) {
+  var cuisine = form.addListItem().setTitle('What kind of food was it?')
+    .setHelpText('Pick the closest. It feeds the Cuisines page on the website.')
+    .setRequired(true)
+    .setChoiceValues(SF_CUISINES.concat([SF_OTHER]));
+  var other = form.addTextItem().setTitle('If something else, which cuisine?')
+    .setHelpText('Only needed if the list above did not have it. A couple of words, e.g. Korean.')
+    .setValidation(FormApp.createTextValidation().setHelpText('Keep it to 40 characters.').requireTextLengthLessThanOrEqualTo(40).build());
+  var after = form.getItemById(restaurantItemId).getIndex();
+  form.moveItem(cuisine, after + 1);
+  form.moveItem(other, after + 2);
+  return { cuisine: cuisine.getId(), cuisineOther: other.getId() };
 }
 
 /** Rebuild the form's list of evenings and circuits from the Evenings tab. */
@@ -151,6 +217,7 @@ function refreshScoreForm() {
   form.getItemById(ids.who).asListItem().setChoiceValues(names);
   form.getItemById(ids.chooser).asListItem().setChoiceValues(names);
   form.getItemById(ids.present).asCheckboxItem().setChoiceValues(names);
+  if (ids.cuisine) form.getItemById(ids.cuisine).asListItem().setChoiceValues(SF_CUISINES.concat([SF_OTHER]));
 }
 
 // ---------------------------------------------------------------- triggers
@@ -256,6 +323,11 @@ function sfRecordEvening_(ss, a, now) {
   sheet.getRange(r, 6).setNumberFormat('@'); // a name like "1947" must stay text
   sheet.getRange(r, 1, 1, 6).setValues([[id, circuit, number, iso, chooser, name]]);
   sheet.getRange(r, 7).setFormula('=IFERROR(AVERAGEIFS(Log!D:D,Log!A:A,A' + r + ',Log!C:C,"Scored"),"")').setNumberFormat('0.00');
+  var cuisine = sfCuisineAnswer_(a);
+  if (cuisine && sfHasCuisineColumn_(sheet)) {
+    sheet.getRange(r, SF_CUISINE_COLUMN).setNumberFormat('@');
+    sheet.getRange(r, SF_CUISINE_COLUMN).setValue(cuisine);
+  }
 
   var there = {};
   there[chooser] = true;
@@ -269,7 +341,50 @@ function sfRecordEvening_(ss, a, now) {
   var log = ss.getSheetByName('Log');
   log.getRange(log.getLastRow() + 1, 1, rows.length, 7).setValues(rows);
 
-  return { changed: true, message: 'Recorded ' + id + ' ' + name + ' (' + Object.keys(there).length + ' there)' };
+  return { changed: true, message: 'Recorded ' + id + ' ' + name + (cuisine ? ', ' + cuisine : '') + ' (' + Object.keys(there).length + ' there)' };
+}
+
+/** The cuisine picked, or the one typed in when it was not on the list. */
+function sfCuisineAnswer_(a) {
+  if (!a.cuisine) return '';
+  if (a.cuisine !== SF_OTHER) return String(a.cuisine);
+  return sfCleanName_(a.cuisineOther).slice(0, 40).trim();
+}
+
+function sfHasCuisineColumn_(sheet) {
+  return String(sheet.getRange(1, SF_CUISINE_COLUMN).getValues()[0][0]).trim() === 'Cuisine';
+}
+
+/** Give the Evenings tab a Cuisine column (H) if it has none. */
+function sfEnsureCuisineColumn_(ss) {
+  var sheet = ss.getSheetByName('Evenings');
+  if (sfHasCuisineColumn_(sheet)) return;
+  var cell = sheet.getRange(1, SF_CUISINE_COLUMN);
+  var found = String(cell.getValues()[0][0]).trim();
+  if (found !== '') {
+    throw new Error('Evenings column H is already used for "' + found + '". Move it, then run this again.');
+  }
+  cell.setValue('Cuisine').setFontWeight('bold');
+  Logger.log('Added a Cuisine column to the Evenings tab.');
+}
+
+/** Make the Public_Evenings tab publish the Cuisine column too. */
+function sfUpdatePublicTab_(ss) {
+  var squash = function (f) { return String(f).replace(/\s+/g, '').toLowerCase(); };
+  var tab = ss.getSheetByName('Public_Evenings');
+  if (!tab) {
+    Logger.log('No Public_Evenings tab found. To publish cuisines, put this in its cell A1: ' + SF_PUBLIC_EVENINGS);
+    return;
+  }
+  var cell = tab.getRange(1, 1);
+  var formula = squash(cell.getFormula());
+  if (formula === squash(SF_PUBLIC_EVENINGS)) return;
+  if (formula === squash('=QUERY(Evenings!A:F,"select A,B,C,D,E,F where A is not null",1)')) {
+    cell.setFormula(SF_PUBLIC_EVENINGS);
+    Logger.log('Public_Evenings now publishes the Cuisine column as well.');
+  } else {
+    Logger.log('Public_Evenings cell A1 is not the formula expected, so it was left alone. To publish cuisines, set it to: ' + SF_PUBLIC_EVENINGS);
+  }
 }
 
 // ---------------------------------------------------------------- helpers

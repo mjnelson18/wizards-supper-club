@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { parseEvenings, parseScores, parseWizards } from '../src/lib/ingest.ts';
+import { parseCuisines, parseEvenings, parseScores, parseWizards } from '../src/lib/ingest.ts';
 import { buildStats } from '../src/lib/stats.ts';
 
 type Cell = string | number | Date;
@@ -41,7 +41,12 @@ class FakeSheet {
       setValues: (v: Cell[][]) => (write(v), range),
       setValue: (v: Cell) => (write([[v]]), range),
       setFormula: (f: string) => (write([[f]]), range),
+      getFormula: () => {
+        const v = this.rows[r - 1]?.[c - 1];
+        return typeof v === 'string' && v.startsWith('=') ? v : '';
+      },
       setNumberFormat: (f: string) => ((this.formats[`${r},${c}`] = f), range),
+      setFontWeight: () => range,
     };
     return range;
   }
@@ -62,14 +67,20 @@ const LOG: Cell[][] = [
   ['C8-01', 'Calum', 'Scored', 8, 'Spreadsheet / WhatsApp backfill', '', ''],
 ];
 
-function load(evenings = EVENINGS, log = LOG) {
+const OLD_PUBLIC = '=QUERY(Evenings!A:F,"select A,B,C,D,E,F where A is not null",1)';
+
+function load(evenings = EVENINGS, log = LOG, publicFormula: string | null = OLD_PUBLIC) {
   const sheets: Record<string, FakeSheet> = { Evenings: new FakeSheet(evenings), Log: new FakeSheet(log) };
+  if (publicFormula !== null) sheets.Public_Evenings = new FakeSheet([[publicFormula]]);
   const ss = { getSheetByName: (n: string) => sheets[n] ?? null, getSpreadsheetTimeZone: () => 'Europe/London' };
+  const logged: string[] = [];
   const ctx = vm.createContext({
     Utilities: { formatDate: (d: Date) => d.toISOString().slice(0, 10) },
+    Logger: { log: (m: string) => logged.push(m) },
   });
   vm.runInContext(readFileSync('apps-script/ScoreForm.gs', 'utf8'), ctx);
-  return { gs: ctx as any, ss, evenings: sheets.Evenings, log: sheets.Log };
+  // The script's globals are untyped: this is a sandbox, not a module.
+  return { gs: ctx as any, ss, evenings: sheets.Evenings, log: sheets.Log, publicTab: sheets.Public_Evenings, logged };
 }
 
 const NOW = new Date('2026-12-04T09:00:00Z');
@@ -236,5 +247,77 @@ describe('what the form writes passes the website checks', () => {
     const wizards = parseWizards(JSON.parse(readFileSync('config/wizards.json', 'utf8')));
     const current = wizards.filter((w) => w.memberUntil === null).map((w) => [w.displayName, w.sheetName]);
     expect([...t.gs.SF_WIZARDS].map((w: string[]) => [...w]).sort()).toEqual(current.sort());
+  });
+});
+
+describe('cuisine', () => {
+  it('upgrade adds a Cuisine column and makes the public tab publish it', () => {
+    t.gs.sfEnsureCuisineColumn_(t.ss);
+    t.gs.sfUpdatePublicTab_(t.ss);
+    expect(t.evenings.rows[0][7]).toBe('Cuisine');
+    expect(t.publicTab.rows[0][0]).toBe('=QUERY(Evenings!A:H,"select A,B,C,D,E,F,H where A is not null",1)');
+    // Running it again changes nothing.
+    const before = JSON.stringify([t.evenings.rows, t.publicTab.rows]);
+    t.gs.sfEnsureCuisineColumn_(t.ss);
+    t.gs.sfUpdatePublicTab_(t.ss);
+    expect(JSON.stringify([t.evenings.rows, t.publicTab.rows])).toBe(before);
+  });
+
+  it('leaves a public tab it does not recognise alone, and says what to set', () => {
+    const custom = load(EVENINGS, LOG, '=QUERY(Evenings!A:F,"select A,F where A is not null",1)');
+    custom.gs.sfUpdatePublicTab_(custom.ss);
+    expect(custom.publicTab.rows[0][0]).toContain('select A,F');
+    expect(custom.logged.join(' ')).toContain('left alone');
+    const none = load(EVENINGS, LOG, null);
+    expect(() => none.gs.sfUpdatePublicTab_(none.ss)).not.toThrow();
+  });
+
+  it('refuses to take over a column H that is already in use', () => {
+    const used = load(EVENINGS.map((r, i) => [...r, i === 0 ? 'Cost per head' : '']));
+    expect(() => used.gs.sfEnsureCuisineColumn_(used.ss)).toThrow(/already used for "Cost per head"/);
+  });
+
+  it('writes the chosen cuisine with the new evening', () => {
+    t.gs.sfEnsureCuisineColumn_(t.ss);
+    const res = t.gs.sfApply_(t.ss, newEvening({ cuisine: 'Israeli' }), NOW);
+    expect(t.evenings.rows[4][7]).toBe('Israeli');
+    expect(t.evenings.formats['5,8']).toBe('@');
+    expect(res.message).toContain('The Palomar, Israeli');
+  });
+
+  it('takes a typed cuisine when it is not on the list, cleaned up', () => {
+    t.gs.sfEnsureCuisineColumn_(t.ss);
+    t.gs.sfApply_(t.ss, newEvening({ cuisine: t.gs.SF_OTHER, cuisineOther: '  Uyghur http://x.example ' }), NOW);
+    expect(t.evenings.rows[4][7]).toBe('Uyghur');
+    t.gs.sfApply_(t.ss, newEvening({ restaurant: 'Second', cuisine: t.gs.SF_OTHER, cuisineOther: '' }), NOW);
+    expect(t.evenings.rows[5][7] ?? '').toBe('');
+  });
+
+  it('still records the evening on a Sheet that has no Cuisine column yet', () => {
+    const res = t.gs.sfApply_(t.ss, newEvening({ cuisine: 'Israeli' }), NOW);
+    expect(res.changed).toBe(true);
+    expect(t.evenings.rows[4]).toHaveLength(7);
+  });
+
+  it('reaches the website through the published tab', () => {
+    t.gs.sfEnsureCuisineColumn_(t.ss);
+    t.gs.sfApply_(t.ss, newEvening({ cuisine: 'Israeli' }), NOW);
+    t.gs.sfApply_(t.ss, newEvening({ restaurant: 'Kimchee', date: '2026-12-10', cuisine: t.gs.SF_OTHER, cuisineOther: 'Uyghur' }), NOW);
+
+    // Public_Evenings publishes A:F and H.
+    const cell = (v: Cell | undefined) => (v instanceof Date ? v.toISOString().slice(0, 10) : `"${String(v ?? '').replace(/"/g, '""')}"`);
+    const csv = t.evenings.rows.map((r) => [...r.slice(0, 6), r[7]].map(cell).join(',')).join('\n');
+    const wizards = parseWizards(JSON.parse(readFileSync('config/wizards.json', 'utf8')));
+    const evenings = parseEvenings(csv, wizards);
+    const { tags, warnings } = parseCuisines(JSON.parse(readFileSync('config/cuisines.json', 'utf8')), evenings, { checkLabels: false });
+    expect(tags['C8-02']).toEqual({ cuisine: 'Israeli', region: 'Middle East' });
+    expect(tags['C8-03']).toEqual({ cuisine: 'Uyghur', region: 'Elsewhere' });
+    expect(tags['C8-01']).toEqual({ cuisine: 'Chinese', region: 'East Asia' }); // history, from the config file
+    expect(warnings.some((w) => w.includes('"Uyghur" from the Sheet is not listed'))).toBe(true);
+  });
+
+  it('only offers cuisines the website knows how to place', () => {
+    const regions = Object.keys(JSON.parse(readFileSync('config/cuisines.json', 'utf8')).regions).sort();
+    expect([...t.gs.SF_CUISINES].sort()).toEqual(regions);
   });
 });

@@ -30,7 +30,8 @@ previous version live.
 ### 1. In the Sheet
 
 1. Add a tab **Public_Evenings** with this in A1:
-   `=QUERY(Evenings!A:F,"select A,B,C,D,E,F where A is not null",1)`
+   `=QUERY(Evenings!A:H,"select A,B,C,D,E,F,H where A is not null",1)`
+   (column H is Cuisine, which the score form fills in; column G, the average, is left out)
 2. Add a tab **Public_Scores** with this in A1:
    `=QUERY(Log!A:D,"select A,B,C,D where A is not null and C <> 'Note'",1)`
 3. Optional: add a tab **Public_Status** with a header row `key`, `value` and rows `baton_holder`, `next_date` (as `YYYY-MM-DD`), `next_restaurant`, filled in by hand.
@@ -92,9 +93,16 @@ To record a result the group has declared, edit [config/overrides.json](config/o
 
 The Cuisines page (linked from Restaurants and Trends) shows the most and least visited cuisines, how the mix has changed circuit by circuit, what each wizard tends to pick, and what each tends to rate above or below the rest of the table.
 
-Cuisines are not in the Sheet. They live in [config/cuisines.json](config/cuisines.json), classified once by hand; nothing calls an AI model when the site builds.
+Nothing calls an AI model when the site builds. A cuisine comes from one of two places:
 
-After a new evening, add one line under `evenings`:
+- **The Sheet's Cuisine column** (Evenings, column H). The score form asks the chooser "What kind of food was it?" and fills this in. To correct one, edit the cell.
+- **[config/cuisines.json](config/cuisines.json)**, for evenings with nothing in that column. All the history before the form asked the question is here, classified once by hand.
+
+The Sheet wins when both have a value. `config/cuisines.json` also holds the list of cuisines and the part of the world each belongs to (`regions`); the form offers the same list.
+
+If a chooser types a cuisine that is not on the list, the site files it under "Elsewhere" and the build logs a warning. Add it to `regions` (and to `SF_CUISINES` in the form script) to place it properly.
+
+To classify an evening by hand instead, add one line under `evenings`:
 
 ```json
 "C8-02": { "restaurant": "The Palomar", "cuisine": "Israeli" }
@@ -102,7 +110,7 @@ After a new evening, add one line under `evenings`:
 
 - `cuisine` must be one of the names under `regions`. To use a new cuisine, add it there first with the part of the world it belongs to, e.g. `"Korean": "East Asia"`.
 - `restaurant` is only a label so the file is readable. The build warns if it no longer matches the Sheet.
-- An evening with no entry is not an error. The build logs a warning, the evening shows under "Not yet classified", and it is left out of the cuisine figures until you add it.
+- An evening with no cuisine in either place is not an error. The build logs a warning, the evening shows under "Not yet classified", and it is left out of the cuisine figures until you add it.
 
 ## Scoring future evenings
 
@@ -110,7 +118,7 @@ After a new evening, add one line under `evenings`:
 
 After each Council:
 
-1. **The chooser** opens the form, picks "Record a new evening" and gives the restaurant, date, circuit and who was there. That adds the evening to the Evenings tab and a Log row per wizard: TBC (score owed) for those there, DNA for the rest.
+1. **The chooser** opens the form, picks "Record a new evening" and gives the restaurant, the kind of food, date, circuit and who was there. That adds the evening to the Evenings tab, with its cuisine, and a Log row per wizard: TBC (score owed) for those there, DNA for the rest.
 2. **Everyone who went** opens the same link, picks "Score an evening", chooses the evening and gives a score from 0 to 10. They can also say they were not there, or ask for the evening's average. Submitting again corrects an earlier answer.
 
 Reviews typed into the form stay in the Log tab's private "Review / note" column, which is never published.
@@ -124,6 +132,13 @@ Reviews typed into the form stay in the Log tab's private "Review / note" column
 
 Take a copy of the Sheet first (File → Make a copy) the first time you use it. The script only ever updates a wizard's own row or adds rows, and its sheet-writing logic is unit-tested here against a fake Sheet, but it has not been run inside Google by these tests.
 
+### Upgrading a form made before the cuisine question
+
+1. In the Apps Script project, open `ScoreForm.gs`, select everything, paste the current `apps-script/ScoreForm.gs` over it and save.
+2. Choose `upgradeScoreForm` in the function dropdown and press Run.
+
+It adds a Cuisine column (H) to the Evenings tab, changes the Public_Evenings formula to publish it, and adds the question to the existing form. The form's link does not change, and running it twice does no harm. If Public_Evenings does not hold the formula it expects, it leaves the tab alone and the log tells you what to set.
+
 ### Near-instant updates (optional)
 
 Without this, new scores reach the site at the next 6-hourly rebuild.
@@ -135,7 +150,7 @@ The script then asks for one rebuild about 7 minutes after a submission. The wai
 
 ## Privacy
 
-- The fetch script keeps only named columns (Evening ID, Circuit, No. in circuit, Date, Chooser, Restaurant; Evening ID, Wizard, Status, Score) and drops everything else, even if extra columns appear in the CSV.
+- The fetch script keeps only named columns (Evening ID, Circuit, No. in circuit, Date, Chooser, Restaurant, Cuisine; Evening ID, Wizard, Status, Score) and drops everything else, even if extra columns appear in the CSV.
 - The build fails if any kept cell contains `@`, `http` or `docs.google.com`, or is longer than 60 characters (restaurant names: 80).
 - After the build, `npm run check:dist` scans the output for email addresses, Google Forms and Sheets links, and the `Review` header, and blocks the deploy on a hit.
 - `public/data/` is generated in CI and is not committed.

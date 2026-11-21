@@ -147,7 +147,7 @@ describe('cuisine config', () => {
   it('tags evenings and warns, without failing, about ones with no cuisine', () => {
     const { tags, warnings } = parseCuisines({ regions, evenings: { 'C8-01': { restaurant: 'Golden Phoenix', cuisine: 'Chinese' } } }, evenings);
     expect(tags).toEqual({ 'C8-01': { cuisine: 'Chinese', region: 'East Asia' } });
-    expect(warnings).toEqual(['No cuisine recorded for: C8-02 New Place. Add them to config/cuisines.json.']);
+    expect(warnings).toEqual(['No cuisine recorded for: C8-02 New Place. Fill in the Cuisine column in the Sheet, or add them to config/cuisines.json.']);
   });
 
   it('warns about an unknown evening or a label that no longer matches the Sheet', () => {
@@ -169,8 +169,37 @@ describe('cuisine config', () => {
   it('accepts the real config file', () => {
     const json = JSON.parse(readFileSync('config/cuisines.json', 'utf8'));
     expect(() => parseCuisines(json, [])).not.toThrow();
-    const used = new Set(Object.values(json.evenings as Record<string, { cuisine: string }>).map((e) => e.cuisine));
-    // Every listed cuisine is used, so the list cannot fill up with leftovers.
-    expect(Object.keys(json.regions).filter((c) => !used.has(c))).toEqual([]);
+    // Every evening's cuisine must have a region.
+    const listed = Object.keys(json.regions);
+    expect(Object.values(json.evenings as Record<string, { cuisine: string }>).filter((e) => !listed.includes(e.cuisine))).toEqual([]);
+  });
+});
+
+describe('cuisine recorded in the Sheet', () => {
+  const csv = `${EVENINGS_HEADER},Cuisine\nC8-01,8,1,2026-09-03,Charles,Golden Phoenix,\nC8-02,8,2,2026-12-03,Daniel,The Palomar,israeli\nC8-03,8,3,,Calum,Kimchee,Korean\n`;
+  const evenings = parseEvenings(csv, wizards);
+  const regions = { Chinese: 'East Asia', Israeli: 'Middle East', Thai: 'South-East Asia' };
+
+  it('reads the optional Cuisine column and leaves it off when blank', () => {
+    expect(evenings.map((e) => e.cuisine)).toEqual([undefined, 'israeli', 'Korean']);
+    expect(Object.keys(evenings[0])).not.toContain('cuisine');
+  });
+
+  it('applies the privacy guards to it', () => {
+    expect(issuesOf(() => parseEvenings(`${EVENINGS_HEADER},Cuisine\nC8-01,8,1,,Charles,X,see http://x\n`, wizards)).join()).toMatch(/"http"/);
+  });
+
+  it('prefers the Sheet, matches names loosely, and files unknown cuisines under Elsewhere', () => {
+    const { tags, warnings } = parseCuisines(
+      { regions, evenings: { 'C8-01': { cuisine: 'Chinese' }, 'C8-02': { cuisine: 'Thai' } } },
+      evenings,
+    );
+    expect(tags).toEqual({
+      'C8-01': { cuisine: 'Chinese', region: 'East Asia' }, // from the file
+      'C8-02': { cuisine: 'Israeli', region: 'Middle East' }, // the Sheet wins over the file's "Thai"
+      'C8-03': { cuisine: 'Korean', region: 'Elsewhere' }, // not listed yet
+    });
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toMatch(/C8-03 Kimchee: cuisine "Korean" from the Sheet is not listed/);
   });
 });
